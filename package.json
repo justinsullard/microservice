@@ -1,5 +1,5 @@
 {
-  "name": "microservice",
+  "name": "jss-microservice",
   "version": "0.1.0",
   "description": "dnode zeroconf microservices",
   "main": "microservice.js",
