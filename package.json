@@ -1,6 +1,6 @@
 {
   "name": "jss-microservice",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "dnode zeroconf microservices",
   "main": "microservice.js",
   "scripts": {
@@ -14,7 +14,8 @@
     "microservice",
     "zeroconf",
     "dnode",
-    "polo"
+    "polo",
+    "eccjs"
   ],
   "author": {
     "name": "Justin Sullard",
@@ -28,6 +29,7 @@
   "homepage": "https://github.com/justinsullard/microservice",
   "dependencies": {
     "dnode": "^1.2.0",
+    "eccjs": "^0.3.1",
     "polo": "^0.7.1",
     "semver": "^4.3.1"
   }

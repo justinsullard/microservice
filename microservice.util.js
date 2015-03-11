@@ -4,6 +4,8 @@
     var objToString = Object.prototype.toString,
         funcString = objToString.call(function () { return; }),
         arrString = objToString.call([]),
+        start_port = 10000, // Default starting port number to use
+        stop_port = 15000, // Default ending port number to use
         error;
     function isProp(obj, k) {
         return Object.prototype.hasOwnProperty.apply(obj, [k]);
@@ -55,6 +57,9 @@
             }
         }
     }());
+    function getArgsArray(args) {
+        return Array.prototype.slice.apply(args);
+    }
     function isFunction(val) {
         return val instanceof Function || objToString.call(val) === funcString;
     }
@@ -153,7 +158,7 @@
                 }
                 oldOff.apply(ObjType, arguments);
             };
-            ObjType.listeners = function off(action) {
+            ObjType.listeners = function listeners(action) {
                 var ret = [];
                 if (isString(action) && listeners[action]) {
                     ret = listeners[action].slice();
@@ -162,7 +167,7 @@
                 return ret;
             };
             ObjType.emit = function emit() {
-                var args = Array.prototype.slice.apply(arguments), action = args.shift(), cb;
+                var args = getArgsArray(arguments), action = args.shift(), cb;
                 if (listeners[action]) {
                     listeners[action].slice().forEach(function (func) {
                         try {
@@ -180,7 +185,70 @@
         }
         return ObjType;
     }
+    // Determine the IPv4 address to use if a host isn't provided for service creation
+    function getHostAddress() {
+        var i, candidate, nets = require('os').networkInterfaces();
+        function filterFunc(item) {
+            return item.family === 'IPv4' && !item.internal;
+        }
+        for (i in nets) {
+            if (nets.hasOwnProperty(i)) {
+                candidate = nets[i].filter(filterFunc)[0];
+                if (candidate) {
+                    return candidate.address;
+                }
+            }
+        }
+        return "127.0.0.1";
+    }
+    // Take a service full name and break it into version and name
+    function getServiceDetails(full_name) {
+        var name = full_name, version = "0.0.0";
+        if (typeof full_name === "string" && full_name.match(/^.*@\d+(\.\d+){0,2}$/)) {
+            name = full_name.replace(/^(.*)@\d+(\.\d+){0,2}$/, "$1");
+            version = full_name.replace(/^.*@(\d+(\.\d+){0,2})$/, "$1");
+        }
+        return {"name": name, "version": version};
+    }
+    // Bind inner prototype functions to inner and provide aliases on outer
+    function bindFuncs(inner, outer, funcs) {
+        var proto = inner.constructor.prototype;
+        funcs.forEach(function (f) {
+            if (proto.hasOwnProperty(f)) {
+                if (typeof proto[f] === "function") {
+                    outer[f] = proto[f].bind(inner);
+                }
+            }
+        });
+    }
+    // Simplify a port range down to ensure it's a valid format
+    function simplifyPortRange(range) {
+        if (isIntegerPositive(range)) {
+            return range;
+        }
+        if (isArray(range) && isIntegerPositive(range[0]) && isIntegerPositive(range[1])) {
+            return range.slice(0, 2).map(function (v) { return asIntegerPositive(v); }).sort();
+        }
+        return [start_port, stop_port];
+    }
+    // Determine if a provided port is in a given range
+    function portInRange(port, range) {
+        if (!range) { return true; }
+        port = asIntegerPositive(port);
+        range = simplifyPortRange(range);
+        if (isIntegerPositive(range)) { return port === asIntegerPositive(range); }
+        return port >= asIntegerPositive(range[0]) && port <= asIntegerPositive(range[1]);
+    }
+    // Given a port or array pair of port ranges get a randomized port to use
+    function getPortFromRange(range) {
+        range = simplifyPortRange(range);
+        if (isIntegerPositive(range)) {
+            return asIntegerPositive(range);
+        }
+        return range[0] + Math.round(Math.random() * ((asIntegerPositive(range[1] - range[0]) || 1) - 1));
+    }
     module.exports = {
+        "getArgsArray": getArgsArray,
         "isProp": isProp,
         "isFunction": isFunction,
         "asFunction": asFunction,
@@ -195,7 +263,13 @@
         "isIntegerPositive": isIntegerPositive,
         "asIntegerPositive": asIntegerPositive,
         "makeEventEmitter": makeEventEmitter,
-        "error": error
+        "error": error,
+        "getHostAddress": getHostAddress,
+        "getServiceDetails": getServiceDetails,
+        "bindFuncs": bindFuncs,
+        "simplifyPortRange": simplifyPortRange,
+        "portInRange": portInRange,
+        "getPortFromRange": getPortFromRange
     };
 
 }());
